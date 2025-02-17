@@ -10,26 +10,26 @@ import FirebaseFirestore
 
 @Observable
 class SpotViewModel {
-    static func saveSpot(spot: Spot) -> Bool {
+    static func saveSpot(spot: Spot) async -> String? {
         let db = Firestore.firestore()
         
         if let id = spot.id {
             do {
                 try db.collection("spots").document(id).setData(from: spot)
                 print("Data updated successfully!")
-                return true
+                return id
             } catch {
                 print("Could not update data in 'spots' collection \(error.localizedDescription)")
-                return false
+                return id
             }
         } else {
             do {
-                try db.collection("spots").addDocument(from: spot)
+                let docRef = try db.collection("spots").addDocument(from: spot)
                 print("Data added successfully!")
-                return true
+                return docRef.documentID
             } catch {
                 print("Could not create a new spot in 'spots' collection \(error.localizedDescription)")
-                return false
+                return nil
             }
         }
     }
