@@ -6,8 +6,11 @@
 //
 
 import SwiftUI
+import Firebase
+import FirebaseFirestore
 
 struct SpotDetailView: View {
+    @FirestoreQuery(collectionPath: "spots") var photos: [Photo]
     @State var spot: Spot
     @State private var photoSheetIsPresented = false
     @State private var showingAlert = false
@@ -46,10 +49,32 @@ struct SpotDetailView: View {
             .buttonStyle(.borderedProminent)
             .tint(.snack)
 
+            ScrollView(.horizontal) {
+                HStack{
+                    ForEach(photos) { photo in
+                        let url = URL(string: photo.imageUrlString)
+                        AsyncImage(url: url) { image in
+                            image
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 80, height: 80)
+                                .clipped()
+                        } placeholder: {
+                            ProgressView()
+                        }
+
+                    }
+                }
+            }
+            .frame(height: 80)
             
             Spacer()
         }
         .navigationBarBackButtonHidden()
+        .task {
+            $photos.path = "spots/\(spot.id ?? "")/photos"
+        }
+        
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button("Cancel") {
@@ -87,6 +112,6 @@ struct SpotDetailView: View {
 
 #Preview {
     NavigationStack {
-        SpotDetailView(spot: Spot())
+        SpotDetailView(spot: Spot(id: "1", name: "Sms newf", address: "Ukraine"))
     }
 }
