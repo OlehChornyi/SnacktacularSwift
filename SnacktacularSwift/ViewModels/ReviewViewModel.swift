@@ -1,35 +1,37 @@
 //
-//  SpotViewModel.swift
+//  ReviewViewModel.swift
 //  SnacktacularSwift
 //
-//  Created by Oleh on 17.02.2025.
+//  Created by Oleh on 25.02.2025.
 //
 
 import Foundation
 import FirebaseFirestore
 
-@MainActor
 @Observable
-class SpotViewModel {
-    static func saveSpot(spot: Spot) async -> String? {
+class ReviewViewModel {
+    
+    static func saveReview(spot: Spot, review: Review) async -> String? {
         let db = Firestore.firestore()
         
-        if let id = spot.id {
+        let collectionString = "spots/\(spot.id ?? "")/reviews"
+        
+        if let id = review.id {
             do {
-                try db.collection("spots").document(id).setData(from: spot)
+                try db.collection(collectionString).document(id).setData(from: review)
                 print("Data updated successfully!")
                 return id
             } catch {
-                print("Could not update data in 'spots' collection \(error.localizedDescription)")
+                print("Could not update data in 'reviews' collection \(error.localizedDescription)")
                 return id
             }
         } else {
             do {
-                let docRef = try db.collection("spots").addDocument(from: spot)
+                let docRef = try db.collection(collectionString).addDocument(from: review)
                 print("Data added successfully!")
                 return docRef.documentID
             } catch {
-                print("Could not create a new spot in 'spots' collection \(error.localizedDescription)")
+                print("Could not create a new review in 'reviews' collection \(error.localizedDescription)")
                 return nil
             }
         }

@@ -11,11 +11,16 @@ import FirebaseFirestore
 
 struct SpotDetailView: View {
     @FirestoreQuery(collectionPath: "spots") var photos: [Photo]
+    @FirestoreQuery(collectionPath: "spots") var reviews: [Review]
     @State var spot: Spot
     @State private var photoSheetIsPresented = false
+    @State private var showReviewViewSheet = false
     @State private var showingAlert = false
+    @State private var showSaveAlert = false
+    @State private var showingAsSheet = false
     @State private var alertMessage = "Cannot add a Photo until you save the Spot."
     @Environment(\.dismiss) private var dismiss
+    var previewRunning = false
     
     var body: some View {
         VStack {
@@ -68,25 +73,80 @@ struct SpotDetailView: View {
             }
             .frame(height: 80)
             
+            List {
+                Section {
+                    ForEach(reviews) { review in
+                        NavigationLink {
+                            ReviewView(spot: spot, review: review)
+                        } label: {
+                            Text(review.title)
+                        }
+
+                    }
+                } header: {
+                    HStack{
+                        Text("Avg.rating:")
+                            .font(.title2)
+                            .bold()
+                        Text("4.5")
+                            .font(.title)
+                            .fontWeight(.black)
+                            .foregroundStyle(Color("SnackColor"))
+                        Spacer()
+                        Button("Rate It") {
+                            if spot.id == nil {
+                                showSaveAlert.toggle()
+                            } else {
+                                showReviewViewSheet.toggle()
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .bold()
+                        .tint(Color("SnackColor"))
+                    }
+                }
+                .headerProminence(.increased)
+            }
+            .listStyle(.plain)
+            
             Spacer()
+        }
+        .onAppear {
+            if !previewRunning && spot.id != nil {
+                $reviews.path = "spots/\(spot.id ?? "")/reviews"
+            } else {
+                showingAsSheet = true
+            }
         }
         .navigationBarBackButtonHidden()
         .task {
-            $photos.path = "spots/\(spot.id ?? "")/photos"
+            if spot.id != nil {
+                $photos.path = "spots/\(spot.id ?? "")/photos"
+            }
         }
         
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button("Cancel") {
-                    dismiss()
+            if showingAsSheet {
+                
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Save") {
+                        saveSpot()
+                        dismiss()
+                    }
+                }
+            } else if showingAsSheet && spot.id != nil {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
                 }
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Save") {
-                    saveSpot()
-                    dismiss()
-                }
-            }
+            
         }
         .alert(alertMessage, isPresented: $showingAlert) {
             Button("Cancel", role: .cancel) {}
@@ -98,8 +158,29 @@ struct SpotDetailView: View {
                 }
             }
         }
+        .alert("Cannot Rate the Place Unless It is Saved", isPresented: $showSaveAlert, actions: {
+            Button("Cancel", role: .cancel) {}
+            Button("Save", role: .none) {
+                Task {
+                    let success = await SpotViewModel.saveSpot(spot: spot)
+                    if success != nil {
+                        $reviews.path = "spots/\(spot.id ?? "")/reviews"
+                        showReviewViewSheet.toggle()
+                    } else {
+                        print("🤬 Dang! Error saving spot!")
+                    }
+                }
+            }
+        }, message: {
+            Text("Would you like to save this allert first?")
+        })
         .fullScreenCover(isPresented: $photoSheetIsPresented) {
             PhotoView(spot: spot)
+        }
+        .sheet(isPresented: $showReviewViewSheet) {
+            NavigationStack {
+                ReviewView(spot: spot, review: Review())
+            }
         }
     }
     
@@ -112,6 +193,6 @@ struct SpotDetailView: View {
 
 #Preview {
     NavigationStack {
-        SpotDetailView(spot: Spot(id: "1", name: "Sms newf", address: "Ukraine"))
+        SpotDetailView(spot: Spot(id: "1", name: "Something new", address: "Ukraine"))
     }
 }
